@@ -24,3 +24,5 @@ go.work
 main
 !internal/main
 
+tmp/*
+!tmp/.gitkeep
