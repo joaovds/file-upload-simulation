@@ -16,6 +16,9 @@ func main() {
   defer folder.Close()
 
   wg := sync.WaitGroup{}
+  maxWorkers := 1000
+
+  workers := make(chan struct{}, maxWorkers)
 
   for {
     files, err := folder.ReadDir(1)
@@ -30,12 +33,13 @@ func main() {
 
 
     wg.Add(1)
-    go uploadFile(files[0].Name(), &wg)
+    workers <- struct{}{}
+    go uploadFile(files[0].Name(), &wg, workers)
   }
   wg.Wait()
 }
 
-func uploadFile(filename string, wg *sync.WaitGroup) error {
+func uploadFile(filename string, wg *sync.WaitGroup, worker <-chan struct{}) error {
   defer wg.Done()
 
   filepath := "./tmp/" + filename
@@ -43,12 +47,16 @@ func uploadFile(filename string, wg *sync.WaitGroup) error {
   file, err := os.Open(filepath)
   if err != nil {
     log.Printf("Error opening file %s: %v\n", filepath, err)
+    <-worker
+
+    return err
   }
   defer file.Close()
 
   time.Sleep(1 * time.Second)
 
   log.Printf("Uploaded file %s\n", filename)
+  <-worker
 
   return nil
 }
